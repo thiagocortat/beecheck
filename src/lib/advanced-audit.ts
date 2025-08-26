@@ -1,4 +1,4 @@
-import chromium from '@sparticuz/chromium'
+import chromium from '@sparticuz/chromium-min'
 import puppeteer from 'puppeteer-core'
 import type { Browser, Page } from 'puppeteer-core'
 import { AdvancedSample, AdvancedScores, AdvancedAuditResult } from '@/types/advanced'
@@ -10,6 +10,12 @@ export class AdvancedAuditor {
   async initialize() {
     // Configure for serverless environments like Vercel
     const isProduction = process.env.NODE_ENV === 'production'
+    
+    // For chromium-min, we need to provide the brotli files location
+    // In Vercel, we'll use a CDN-hosted version of the brotli files
+    const brotliPath = isProduction 
+      ? 'https://github.com/Sparticuz/chromium/releases/download/v131.0.0/chromium-v131.0.0-pack.tar'
+      : undefined
     
     this.browser = await puppeteer.launch({
       args: [
@@ -28,7 +34,7 @@ export class AdvancedAuditor {
         '--disable-ipc-flooding-protection',
         ...(isProduction ? ['--single-process'] : [])
       ],
-      executablePath: await chromium.executablePath(),
+      executablePath: await chromium.executablePath(brotliPath),
       headless: true
     })
   }
