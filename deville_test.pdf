@@ -1,106 +1,10 @@
-import { NextRequest, NextResponse } from 'next/server';
-import { prisma } from '@/lib/prisma';
-import { getScoreColor, getScoreEmoji } from '@/lib/scoring';
 
-export async function GET(
-  request: NextRequest,
-  { params }: { params: Promise<{ id: string }> }
-) {
-  try {
-    const { id } = await params
-    const report = await prisma.report.findUnique({
-      where: { id },
-      include: { competitors: true }
-    });
-
-    if (!report) {
-      return new NextResponse('Relatório não encontrado', { status: 404 });
-    }
-
-    if (report.status !== 'completed') {
-      return new NextResponse('Relatório ainda não foi concluído', { status: 400 });
-    }
-
-
-    const scoreColor = getScoreColor(report.score || 0);
-    const scoreEmoji = getScoreEmoji(report.score || 0);
-    
-    // Calculate mobile and desktop scores from available metrics
-    const calculateDeviceScore = (lcp: number | null, cls: number | null, inp: number | null, ttfb: number | null, pageSize: number | null) => {
-      if (!lcp || !cls || !inp || !ttfb || !pageSize) return null;
-      
-      const lcpScore = lcp <= 2500 ? 100 : Math.max(0, 100 - ((lcp - 2500) / 1500) * 50);
-      const clsScore = cls <= 0.1 ? 100 : Math.max(0, 100 - ((cls - 0.1) / 0.15) * 50);
-      const inpScore = inp <= 200 ? 100 : Math.max(0, 100 - ((inp - 200) / 300) * 50);
-      const ttfbScore = ttfb <= 200 ? 100 : Math.max(0, 100 - ((ttfb - 200) / 400) * 50);
-      const pageSizeScore = pageSize <= 1000 ? 100 : Math.max(0, 100 - ((pageSize - 1000) / 2000) * 50);
-      
-      return Math.round((lcpScore + clsScore + inpScore + ttfbScore + pageSizeScore) / 5);
-    };
-    
-    const mobileScore = calculateDeviceScore(report.lcpMobile, report.clsMobile, report.inpMobile, report.ttfbMobile, report.pageSizeMobile);
-    const desktopScore = calculateDeviceScore(report.lcpDesktop, report.clsDesktop, report.inpDesktop, report.ttfbDesktop, report.pageSizeDesktop);
-
-    // Use Basic Score 2.0 for consistency
-    const { toBasicInputs } = await import('@/lib/normalize-basic');
-    const { computeBasicScore } = await import('@/lib/basic-score');
-    
-    const basicInputs = toBasicInputs({
-      mobile: {
-        lcp: report.lcpMobile,
-        cls: report.clsMobile,
-        inp: report.inpMobile,
-        ttfb: report.ttfbMobile,
-        pageSize: report.pageSizeMobile
-      },
-      desktop: {
-        lcp: report.lcpDesktop,
-        cls: report.clsDesktop,
-        inp: report.inpDesktop,
-        ttfb: report.ttfbDesktop,
-        pageSize: report.pageSizeDesktop
-      },
-      seo: {
-        hasTitle: report.hasTitle,
-        hasDescription: report.hasDescription,
-        hasH1: report.hasH1,
-        hasHttps: report.hasHttps,
-        hasSitemap: report.hasSitemap,
-        hasRobots: report.hasRobots,
-        hasCanonical: report.hasCanonical,
-        hasSchema: report.hasSchema,
-        hasBookingCta: report.hasBookingCta
-      },
-      url: report.url
-    });
-    
-    const basicScore = computeBasicScore(basicInputs);
-    
-    // Format metrics for display
-    const formatMetric = (value: number | null, unit: string = '') => {
-      if (value === null || value === undefined) return 'N/A';
-      return `${Math.round(value)}${unit}`;
-    };
-    
-    const formatCLS = (value: number | null) => {
-      if (value === null || value === undefined) return 'N/A';
-      return value.toFixed(3);
-    };
-    
-    const formatBytes = (bytes: number | null) => {
-      if (!bytes) return 'N/A';
-      if (bytes > 1024 * 1024) return `${(bytes / (1024 * 1024)).toFixed(1)}MB`;
-      const kb = bytes / 1024;
-      return kb >= 10 ? `${Math.round(kb)}KB` : `${kb.toFixed(1)}KB`;
-    };
-
-    const html = `
 <!DOCTYPE html>
 <html lang="pt-BR">
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Relatório BeeCheck - ${report.url}</title>
+  <title>Relatório BeeCheck - https://deville.com.br</title>
   <style>
     * {
       margin: 0;
@@ -143,14 +47,14 @@ export async function GET(
       padding: 25px;
       text-align: center;
       margin-bottom: 25px;
-      border: 2px solid ${scoreColor === 'green' ? '#10b981' : scoreColor === 'yellow' ? '#f59e0b' : '#ef4444'};
+      border: 2px solid #10b981;
     }
     
     .score-badge {
       display: inline-block;
       font-size: 42px;
       font-weight: bold;
-      color: ${scoreColor === 'green' ? '#10b981' : scoreColor === 'yellow' ? '#f59e0b' : '#ef4444'};
+      color: #10b981;
       margin-bottom: 8px;
     }
     
@@ -383,9 +287,9 @@ export async function GET(
   </div>
 
   <div class="score-section">
-    <div class="score-badge">${scoreEmoji} ${report.score}/100</div>
+    <div class="score-badge">🟢 85/100</div>
     <div class="score-label">Nota Geral do Site (Score 2.0)</div>
-    <div class="url">${report.url}</div>
+    <div class="url">https://deville.com.br</div>
   </div>
 
   <!-- Core Web Vitals -->
@@ -394,23 +298,23 @@ export async function GET(
     <div class="cwv-grid">
       <div class="cwv-card">
         <div class="cwv-title">LCP (Carregamento)</div>
-        <div class="cwv-value cwv-mobile">${formatMetric(report.lcpMobile, 'ms')}</div>
+        <div class="cwv-value cwv-mobile">3134ms</div>
         <div class="metric-description">Mobile</div>
-        <div class="cwv-value cwv-desktop">${formatMetric(report.lcpDesktop, 'ms')}</div>
+        <div class="cwv-value cwv-desktop">2624ms</div>
         <div class="metric-description">Desktop</div>
       </div>
       <div class="cwv-card">
         <div class="cwv-title">CLS (Estabilidade)</div>
-        <div class="cwv-value cwv-mobile">${formatCLS(report.clsMobile)}</div>
+        <div class="cwv-value cwv-mobile">0.021</div>
         <div class="metric-description">Mobile</div>
-        <div class="cwv-value cwv-desktop">${formatCLS(report.clsDesktop)}</div>
+        <div class="cwv-value cwv-desktop">0.009</div>
         <div class="metric-description">Desktop</div>
       </div>
       <div class="cwv-card">
         <div class="cwv-title">INP (Interatividade)</div>
-        <div class="cwv-value cwv-mobile">${formatMetric(report.inpMobile, 'ms')}</div>
+        <div class="cwv-value cwv-mobile">187ms</div>
         <div class="metric-description">Mobile</div>
-        <div class="cwv-value cwv-desktop">${formatMetric(report.inpDesktop, 'ms')}</div>
+        <div class="cwv-value cwv-desktop">231ms</div>
         <div class="metric-description">Desktop</div>
       </div>
     </div>
@@ -422,16 +326,16 @@ export async function GET(
     <div class="metrics-grid">
       <div class="metric-card">
         <div class="metric-title">TTFB (Tempo de Resposta)</div>
-        <div class="metric-value mobile">${formatMetric(report.ttfbMobile, 'ms')}</div>
+        <div class="metric-value mobile">623ms</div>
         <div class="metric-description">Mobile • Ideal: &lt;800ms</div>
-        <div class="metric-value desktop">${formatMetric(report.ttfbDesktop, 'ms')}</div>
+        <div class="metric-value desktop">406ms</div>
         <div class="metric-description">Desktop • Ideal: &lt;800ms</div>
       </div>
       <div class="metric-card">
         <div class="metric-title">Tamanho da Página</div>
-        <div class="metric-value mobile">${formatBytes(report.pageSizeMobile)}</div>
+        <div class="metric-value mobile">2.5KB</div>
         <div class="metric-description">Mobile • Ideal: &lt;1.5MB</div>
-        <div class="metric-value desktop">${formatBytes(report.pageSizeDesktop)}</div>
+        <div class="metric-value desktop">2.3KB</div>
         <div class="metric-description">Desktop • Ideal: &lt;2.5MB</div>
       </div>
     </div>
@@ -442,103 +346,73 @@ export async function GET(
     <h2 class="section-title">🔍 Checklist SEO para Hotéis</h2>
     <div class="seo-checklist">
       <div class="seo-item">
-        <span class="seo-icon">${report.hasTitle ? '✅' : '❌'}</span>
+        <span class="seo-icon">✅</span>
         <div class="seo-content">
           <strong>Título da página (meta title)</strong>
-          <div class="seo-description">${report.hasTitle ? 'Título otimizado encontrado - ajuda no ranking do Google' : 'Título ausente - prejudica a visibilidade nos resultados de busca'}</div>
+          <div class="seo-description">Título otimizado encontrado - ajuda no ranking do Google</div>
         </div>
       </div>
       <div class="seo-item">
-        <span class="seo-icon">${report.hasDescription ? '✅' : '❌'}</span>
+        <span class="seo-icon">✅</span>
         <div class="seo-content">
           <strong>Descrição da página (meta description)</strong>
-          <div class="seo-description">${report.hasDescription ? 'Descrição presente - melhora a taxa de cliques nos resultados' : 'Descrição ausente - perde oportunidade de atrair cliques'}</div>
+          <div class="seo-description">Descrição presente - melhora a taxa de cliques nos resultados</div>
         </div>
       </div>
       <div class="seo-item">
-        <span class="seo-icon">${report.hasH1 ? '✅' : '❌'}</span>
+        <span class="seo-icon">❌</span>
         <div class="seo-content">
           <strong>Cabeçalho principal (H1)</strong>
-          <div class="seo-description">${report.hasH1 ? 'H1 único encontrado - estrutura bem definida para SEO' : 'H1 ausente ou duplicado - prejudica a hierarquia da página'}</div>
+          <div class="seo-description">H1 ausente ou duplicado - prejudica a hierarquia da página</div>
         </div>
       </div>
       <div class="seo-item">
-        <span class="seo-icon">${report.hasHttps ? '✅' : '❌'}</span>
+        <span class="seo-icon">✅</span>
         <div class="seo-content">
           <strong>Conexão segura (HTTPS)</strong>
-          <div class="seo-description">${report.hasHttps ? 'Site seguro - transmite confiança aos hóspedes' : 'Site inseguro - pode afastar potenciais clientes'}</div>
+          <div class="seo-description">Site seguro - transmite confiança aos hóspedes</div>
         </div>
       </div>
       <div class="seo-item">
-        <span class="seo-icon">${report.hasCanonical ? '✅' : '❌'}</span>
+        <span class="seo-icon">✅</span>
         <div class="seo-content">
           <strong>URL canônica</strong>
-          <div class="seo-description">${report.hasCanonical ? 'URL canônica definida - evita conteúdo duplicado' : 'URL canônica ausente - pode causar problemas de indexação'}</div>
+          <div class="seo-description">URL canônica definida - evita conteúdo duplicado</div>
         </div>
       </div>
       <div class="seo-item">
-        <span class="seo-icon">${report.hasSchema ? '✅' : '❌'}</span>
+        <span class="seo-icon">✅</span>
         <div class="seo-content">
           <strong>Dados estruturados (Schema)</strong>
-          <div class="seo-description">${report.hasSchema ? 'Schema markup presente - melhora a exibição nos resultados' : 'Schema ausente - perde rich snippets (estrelas, preços, etc.)'}</div>
+          <div class="seo-description">Schema markup presente - melhora a exibição nos resultados</div>
         </div>
       </div>
       <div class="seo-item">
-        <span class="seo-icon">${report.hasBookingCta ? '✅' : '❌'}</span>
+        <span class="seo-icon">✅</span>
         <div class="seo-content">
           <strong>Botão de reserva visível</strong>
-          <div class="seo-description">${report.hasBookingCta ? 'Call-to-action encontrado - facilita conversões' : 'Botão de reserva não identificado - pode reduzir conversões'}</div>
+          <div class="seo-description">Call-to-action encontrado - facilita conversões</div>
         </div>
       </div>
     </div>
   </div>
 
-  ${basicScore.gates.reasons.length > 0 ? `
-  <!-- Problemas Críticos -->
-  <div class="section">
-    <h2 class="section-title">⚠️ Problemas que Limitam sua Nota</h2>
-    <div class="gates-section">
-      ${basicScore.gates.reasons.map(reason => `
-        <div class="gate-item">• ${reason}</div>
-      `).join('')}
-    </div>
-  </div>
-  ` : ''}
+  
 
   <!-- Recomendações -->
   <div class="section">
     <h2 class="section-title">💡 Recomendações Prioritárias</h2>
     <div class="recommendations">
-      ${basicScore.subscores.cwv < 80 ? `
-      <div class="recommendation-item">
-        <div class="recommendation-title">🎯 Otimizar Core Web Vitals</div>
-        <div class="recommendation-description">Melhorar LCP, CLS e INP para aumentar conversões e ranking no Google</div>
-      </div>
-      ` : ''}
-      ${basicScore.subscores.ttfb < 80 ? `
-      <div class="recommendation-item">
-        <div class="recommendation-title">⚡ Acelerar Servidor</div>
-        <div class="recommendation-description">Implementar cache e CDN para reduzir tempo de resposta</div>
-      </div>
-      ` : ''}
-      ${basicScore.subscores.weight < 80 ? `
+      
+      
+      
       <div class="recommendation-item">
         <div class="recommendation-title">📦 Reduzir Tamanho da Página</div>
         <div class="recommendation-description">Comprimir imagens e minificar código para carregamento mais rápido</div>
       </div>
-      ` : ''}
-      ${basicScore.subscores.mobile < 80 ? `
-      <div class="recommendation-item">
-        <div class="recommendation-title">📱 Melhorar Experiência Mobile</div>
-        <div class="recommendation-description">Otimizar para dispositivos móveis onde acontecem 70% das reservas</div>
-      </div>
-      ` : ''}
-      ${basicScore.subscores.seo < 80 ? `
-      <div class="recommendation-item">
-        <div class="recommendation-title">🔍 Aprimorar SEO</div>
-        <div class="recommendation-description">Completar meta tags e dados estruturados para melhor visibilidade</div>
-      </div>
-      ` : ''}
+      
+      
+      
     </div>
   </div>
 
@@ -548,12 +422,12 @@ export async function GET(
     <div class="comparison-grid">
       <div class="comparison-card">
         <div class="comparison-title">📱 Mobile</div>
-        <div class="comparison-score mobile">${report.score}/100</div>
+        <div class="comparison-score mobile">85/100</div>
         <div class="metric-description">Prioridade máxima • 70% das reservas</div>
       </div>
       <div class="comparison-card">
         <div class="comparison-title">💻 Desktop</div>
-        <div class="comparison-score desktop">${report.score}/100</div>
+        <div class="comparison-score desktop">85/100</div>
         <div class="metric-description">Complementar • Pesquisa e comparação</div>
       </div>
     </div>
@@ -584,23 +458,12 @@ export async function GET(
   </div>
 
   <div class="footer">
-    <p>Relatório gerado em ${new Date(report.createdAt).toLocaleDateString('pt-BR')} • Score 2.0</p>
+    <p>Relatório gerado em 26/08/2025 • Score 2.0</p>
     <p>BeeCheck - Transformando dados em mais reservas</p>
     <div class="qr-section">
-      <p>Acesse o relatório completo em: ${process.env.NEXT_PUBLIC_APP_URL}/reports/${report.id}</p>
+      <p>Acesse o relatório completo em: undefined/reports/cmet26quv000yz0fkqlh5yxv1</p>
     </div>
   </div>
 </body>
 </html>
-    `;
-
-    return new NextResponse(html, {
-      headers: {
-        'Content-Type': 'text/html; charset=utf-8',
-      },
-    });
-  } catch (error) {
-    console.error('Erro ao gerar PDF HTML:', error);
-    return new NextResponse('Erro interno do servidor', { status: 500 });
-  }
-}
+    
