@@ -1,4 +1,5 @@
-import { chromium, Browser, Page } from 'playwright'
+import * as playwright from 'playwright-aws-lambda'
+import { Browser, Page } from 'playwright'
 import { AdvancedSample, AdvancedScores, AdvancedAuditResult } from '@/types/advanced'
 import * as axe from 'axe-core'
 
@@ -9,7 +10,7 @@ export class AdvancedAuditor {
     // Configure for serverless environments like Vercel
     const isProduction = process.env.NODE_ENV === 'production'
     
-    this.browser = await chromium.launch({
+    this.browser = await playwright.launchChromium({
       headless: true,
       args: [
         '--no-sandbox',
@@ -25,9 +26,7 @@ export class AdvancedAuditor {
         '--disable-features=TranslateUI',
         '--disable-ipc-flooding-protection',
         ...(isProduction ? ['--single-process'] : [])
-      ],
-      // Set executable path for Vercel if needed
-      executablePath: process.env.PLAYWRIGHT_CHROMIUM_EXECUTABLE_PATH || undefined
+      ]
     })
   }
 
