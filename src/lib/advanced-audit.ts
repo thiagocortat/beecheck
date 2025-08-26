@@ -6,9 +6,28 @@ export class AdvancedAuditor {
   private browser: Browser | null = null
 
   async initialize() {
+    // Configure for serverless environments like Vercel
+    const isProduction = process.env.NODE_ENV === 'production'
+    
     this.browser = await chromium.launch({
       headless: true,
-      args: ['--no-sandbox', '--disable-setuid-sandbox']
+      args: [
+        '--no-sandbox',
+        '--disable-setuid-sandbox',
+        '--disable-dev-shm-usage',
+        '--disable-accelerated-2d-canvas',
+        '--no-first-run',
+        '--no-zygote',
+        '--disable-gpu',
+        '--disable-background-timer-throttling',
+        '--disable-backgrounding-occluded-windows',
+        '--disable-renderer-backgrounding',
+        '--disable-features=TranslateUI',
+        '--disable-ipc-flooding-protection',
+        ...(isProduction ? ['--single-process'] : [])
+      ],
+      // Set executable path for Vercel if needed
+      executablePath: process.env.PLAYWRIGHT_CHROMIUM_EXECUTABLE_PATH || undefined
     })
   }
 

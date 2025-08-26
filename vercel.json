@@ -1,0 +1,18 @@
+{
+  "buildCommand": "npm run build",
+  "functions": {
+    "src/app/api/advanced-scan/route.ts": {
+      "maxDuration": 30
+    }
+  },
+  "env": {
+    "PLAYWRIGHT_SKIP_BROWSER_DOWNLOAD": "0",
+    "PLAYWRIGHT_BROWSERS_PATH": "/tmp/.cache/ms-playwright"
+  },
+  "build": {
+    "env": {
+      "PLAYWRIGHT_SKIP_BROWSER_DOWNLOAD": "0",
+      "PLAYWRIGHT_BROWSERS_PATH": "/tmp/.cache/ms-playwright"
+    }
+  }
+}
