@@ -1,0 +1,64 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model Report {
+  id          String   @id @default(cuid())
+  url         String
+  status      String   @default("pending") // pending, processing, completed, failed
+  score       Int?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+  completedAt DateTime?
+  
+  // Core Web Vitals
+  lcpMobile     Float?
+  lcpDesktop    Float?
+  clsMobile     Float?
+  clsDesktop    Float?
+  inpMobile     Float?
+  inpDesktop    Float?
+  
+  // Performance metrics
+  ttfbMobile    Float?
+  ttfbDesktop   Float?
+  pageSizeMobile Int?
+  pageSizeDesktop Int?
+  
+  // SEO metrics
+  hasTitle      Boolean?
+  hasDescription Boolean?
+  hasH1         Boolean?
+  hasHttps      Boolean?
+  hasSitemap    Boolean?
+  hasRobots     Boolean?
+  hasCanonical  Boolean?
+  hasSchema     Boolean?
+  hasBookingCta Boolean?
+  
+  // Generated content
+  executiveSummary String?
+  technicalReport  String?
+  recommendations  String?
+  
+  competitors Competitor[]
+  
+  @@map("reports")
+}
+
+model Competitor {
+  id       String @id @default(cuid())
+  reportId String
+  url      String
+  score    Int?
+  rank     Int?
+  
+  report Report @relation(fields: [reportId], references: [id], onDelete: Cascade)
+  
+  @@map("competitors")
+}
