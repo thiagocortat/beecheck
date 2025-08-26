@@ -23,22 +23,9 @@ export async function GET(
       )
     }
     
-    // Parse executive summary if it exists
-    let executiveSummary = null
-    if (report.executiveSummary) {
-      try {
-        executiveSummary = JSON.parse(report.executiveSummary)
-      } catch {
-        executiveSummary = null
-      }
-    }
-    
     return NextResponse.json({
       success: true,
-      report: {
-        ...report,
-        executiveSummary
-      }
+      report
     })
     
   } catch (error) {

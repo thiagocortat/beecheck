@@ -434,19 +434,7 @@ export class AdvancedMetricsTranslator {
       .slice(0, limit)
   }
 
-  static generateExecutiveSummary(translations: TranslatedMetrics): string {
-    const topIssues = this.getTopIssues(translations, 3)
-    
-    if (topIssues.length === 0) {
-      return 'Parabéns! Sua página está bem otimizada e não foram encontrados problemas críticos de performance.'
-    }
 
-    const summary = topIssues.map((issue, index) => 
-      `${index + 1}. **${issue.title}**: ${issue.description}. ${issue.impact}`
-    ).join('\n\n')
-
-    return `Os principais pontos de melhoria identificados são:\n\n${summary}`
-  }
 }
 
 export const metricsTranslator = new AdvancedMetricsTranslator()

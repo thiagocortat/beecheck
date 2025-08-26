@@ -5,8 +5,9 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Progress } from '@/components/ui/progress';
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import { getScoreColor } from '@/lib/scoring';
-import { Trophy, TrendingUp, TrendingDown, Minus } from 'lucide-react';
+import { Trophy, TrendingUp, TrendingDown, Minus, HelpCircle } from 'lucide-react';
 
 interface CompetitorComparisonProps {
   reportId: string;
@@ -19,6 +20,22 @@ interface RankingItem {
   type: 'main' | 'competitor';
   position: number;
   medal: string;
+  basicInputs?: {
+    lcp?: number;
+    inp?: number;
+    ttfb?: number;
+    pageWeight?: number;
+    requests?: number;
+  };
+  basicScore?: {
+    final: number;
+    gates: {
+      reasons: string[];
+    };
+    subscores?: {
+      cwv?: number;
+    };
+  };
 }
 
 interface ComparisonInsights {
@@ -135,16 +152,40 @@ export function CompetitorComparison({ reportId }: CompetitorComparisonProps) {
     return <Minus className="w-4 h-4 text-gray-600" />;
   };
 
+  // Função para obter cor do selo baseada na nota
+  const getScoreBadge = (score: number) => {
+    if (score >= 88) return '🟢 Excelente';
+    if (score >= 70) return '🟡 Bom';
+    return '🔴 Precisa melhorar';
+  };
+  
+  // Função para obter mensagem de performance
+  const getPerformanceMessage = (score: number, isMain: boolean) => {
+    if (isMain) return 'Seu site';
+    if (score >= 88) return 'Site muito bem otimizado';
+    if (score >= 70) return 'Site com boa performance';
+    return 'Site com oportunidades de melhoria';
+  };
+
   return (
-    <div className="space-y-6">
-      {/* Insights Overview */}
-      <Card className="bg-gradient-to-r from-amber-50 to-orange-50 border-amber-200">
-        <CardHeader>
-          <CardTitle className="flex items-center gap-2 text-amber-800">
-            <Trophy className="w-5 h-5" />
-            Posição no Ranking
-          </CardTitle>
-        </CardHeader>
+    <TooltipProvider>
+      <div className="space-y-6">
+        {/* Insights Overview */}
+        <Card className="bg-gradient-to-r from-amber-50 to-orange-50 border-amber-200">
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2 text-amber-800">
+              <Trophy className="w-5 h-5" />
+              Posição no Ranking
+              <Tooltip>
+                <TooltipTrigger>
+                  <HelpCircle className="w-4 h-4 text-gray-500" />
+                </TooltipTrigger>
+                <TooltipContent className="max-w-sm">
+                  <p>Compare seu hotel com concorrentes usando o Score 2.0. Veja onde você está no ranking e identifique oportunidades de melhoria.</p>
+                </TooltipContent>
+              </Tooltip>
+            </CardTitle>
+          </CardHeader>
         <CardContent>
           <div className="grid md:grid-cols-3 gap-4">
             <div className="text-center">
@@ -175,56 +216,213 @@ export function CompetitorComparison({ reportId }: CompetitorComparisonProps) {
       {/* Ranking Table */}
       <Card>
         <CardHeader>
-          <CardTitle>🏆 Ranking Completo</CardTitle>
+          <CardTitle className="flex items-center gap-2" title="Pesos, gates e penalidades idênticos à Análise Básica.">
+            <Trophy className="h-5 w-5" />
+            Concorrentes (Análise Básica)
+          </CardTitle>
         </CardHeader>
         <CardContent>
-          <div className="space-y-3">
-            {ranking.map((item) => {
-              const scoreColor = getScoreColor(item.score);
-              const isMainSite = item.type === 'main';
-              
-              return (
-                <div
-                  key={item.id}
-                  className={`flex items-center justify-between p-4 rounded-lg border-2 transition-all ${
-                    isMainSite 
-                      ? 'bg-amber-50 border-amber-200 shadow-md' 
-                      : 'bg-gray-50 border-gray-200 hover:border-gray-300'
-                  }`}
-                >
-                  <div className="flex items-center gap-4">
-                    <div className="text-2xl">{item.medal}</div>
-                    <div className="flex-1">
-                      <div className="flex items-center gap-2 mb-1">
-                        <span className="font-medium">
-                          {new URL(item.url).hostname.replace('www.', '')}
-                        </span>
-                        {isMainSite && (
-                          <Badge variant="outline" className="text-xs">
-                            Seu Site
-                          </Badge>
+          <div className="overflow-x-auto">
+            <table className="w-full">
+              <thead>
+                <tr className="border-b">
+                  <th className="text-left p-3">
+                    <Tooltip>
+                      <TooltipTrigger className="flex items-center gap-1">
+                        Posição
+                        <HelpCircle className="w-3 h-3 text-gray-400" />
+                      </TooltipTrigger>
+                      <TooltipContent>
+                        <p>Ranking baseado na pontuação Score 2.0</p>
+                      </TooltipContent>
+                    </Tooltip>
+                  </th>
+                  <th className="text-left p-3">
+                    <Tooltip>
+                      <TooltipTrigger className="flex items-center gap-1">
+                        Hotel
+                        <HelpCircle className="w-3 h-3 text-gray-400" />
+                      </TooltipTrigger>
+                      <TooltipContent>
+                        <p>Nome do domínio e link para o site</p>
+                      </TooltipContent>
+                    </Tooltip>
+                  </th>
+                  <th className="text-left p-3">
+                    <Tooltip>
+                      <TooltipTrigger className="flex items-center gap-1">
+                        Score 2.0
+                        <HelpCircle className="w-3 h-3 text-gray-400" />
+                      </TooltipTrigger>
+                      <TooltipContent className="max-w-xs">
+                        <p>Pontuação de 0 a 100 baseada em performance, SEO, segurança e usabilidade mobile</p>
+                      </TooltipContent>
+                    </Tooltip>
+                  </th>
+                  <th className="text-left p-3">
+                    <Tooltip>
+                      <TooltipTrigger className="flex items-center gap-1">
+                        Diferença
+                        <HelpCircle className="w-3 h-3 text-gray-400" />
+                      </TooltipTrigger>
+                      <TooltipContent>
+                        <p>Diferença de pontos em relação ao seu hotel</p>
+                      </TooltipContent>
+                    </Tooltip>
+                  </th>
+                  <th className="text-left p-3">
+                    <Tooltip>
+                      <TooltipTrigger className="flex items-center gap-1">
+                        Status
+                        <HelpCircle className="w-3 h-3 text-gray-400" />
+                      </TooltipTrigger>
+                      <TooltipContent className="max-w-xs">
+                        <p>Avaliação qualitativa da performance e limitadores identificados</p>
+                      </TooltipContent>
+                    </Tooltip>
+                  </th>
+                </tr>
+              </thead>
+              <tbody>
+                {ranking.map((item) => {
+                  const mainSite = ranking.find(s => s.type === 'main');
+                  const scoreDelta = mainSite ? item.score - mainSite.score : 0;
+                  const deltaColor = scoreDelta > 2 ? 'text-red-600' : scoreDelta < -2 ? 'text-green-600' : 'text-gray-500';
+                  const deltaIcon = scoreDelta > 2 ? '↑' : scoreDelta < -2 ? '↓' : '~';
+                  const isMainSite = item.type === 'main';
+                  
+                  return (
+                    <tr key={item.id} className={`border-b hover:bg-gray-50 ${isMainSite ? 'bg-blue-50 border-blue-200' : ''}`}>
+                      <td className="p-3">
+                        <div className="flex items-center gap-3">
+                          <span className="text-2xl">{item.medal}</span>
+                          <span className="font-semibold text-lg">#{item.position}</span>
+                        </div>
+                      </td>
+                      <td className="p-3">
+                        <div className="flex flex-col gap-1">
+                          <div className="flex items-center gap-2">
+                            <span className="font-semibold text-base">{new URL(item.url).hostname.replace('www.', '')}</span>
+                            {isMainSite && <Badge className="bg-blue-100 text-blue-800 text-xs">Seu Hotel</Badge>}
+                          </div>
+                          <a href={item.url} target="_blank" rel="noopener noreferrer" className="text-sm text-blue-600 hover:underline truncate max-w-xs">
+                            {item.url}
+                          </a>
+                        </div>
+                      </td>
+                      <td className="p-3">
+                        <div className="flex flex-col gap-1">
+                          <div className="flex items-center gap-2">
+                            <span className="text-2xl font-bold">{item.score}</span>
+                            <span className="text-sm text-gray-600">/100</span>
+                          </div>
+                          <Tooltip>
+                            <TooltipTrigger>
+                              <span className="text-xs text-gray-600">{getScoreBadge(item.score)}</span>
+                            </TooltipTrigger>
+                            <TooltipContent>
+                              <p>Classificação baseada na pontuação: 88+ Excelente, 70+ Bom, &lt;70 Precisa melhorar</p>
+                            </TooltipContent>
+                          </Tooltip>
+                        </div>
+                      </td>
+                      <td className="p-3">
+                        {!isMainSite ? (
+                          <div className="flex flex-col gap-1">
+                            <span className={`font-semibold ${deltaColor}`}>
+                              {deltaIcon} {Math.abs(scoreDelta)} pontos
+                            </span>
+                            <span className="text-xs text-gray-600">
+                              {scoreDelta > 0 ? 'Acima de você' : scoreDelta < 0 ? 'Abaixo de você' : 'Mesmo nível'}
+                            </span>
+                          </div>
+                        ) : (
+                          <span className="text-gray-500 font-medium">Referência</span>
                         )}
-                      </div>
-                      <div className="flex items-center gap-2">
-                        <Progress value={item.score} className="w-32 h-2" />
-                        <span className="text-sm text-gray-600">{item.score}%</span>
-                      </div>
-                    </div>
-                  </div>
-                  <div className="text-right">
-                    <div className="text-2xl font-bold mb-1" style={{ 
-                      color: scoreColor === 'green' ? '#10b981' : 
-                             scoreColor === 'yellow' ? '#f59e0b' : '#ef4444' 
-                    }}>
-                      {item.score}
-                    </div>
-                    <Badge variant={getScoreBadgeVariant(scoreColor)} className="text-xs">
-                      {item.position}º lugar
-                    </Badge>
-                  </div>
-                </div>
-              );
-            })}
+                      </td>
+                      <td className="p-3">
+                        <div className="flex flex-col gap-1">
+                          <span className="text-sm font-medium">{getPerformanceMessage(item.score, isMainSite)}</span>
+                          {item.basicScore?.gates?.reasons && item.basicScore.gates.reasons.length > 0 && (
+                            <Tooltip>
+                              <TooltipTrigger>
+                                <span className="text-xs text-amber-600 bg-amber-50 px-2 py-1 rounded cursor-help">
+                                  ⚠️ {item.basicScore.gates.reasons.length} limitador{item.basicScore.gates.reasons.length > 1 ? 'es' : ''}
+                                </span>
+                              </TooltipTrigger>
+                              <TooltipContent className="max-w-sm">
+                                <div className="space-y-1">
+                                  <p className="font-semibold">Problemas que limitam a pontuação:</p>
+                                  {item.basicScore.gates.reasons.slice(0, 3).map((reason, idx) => (
+                                    <p key={idx} className="text-xs">• {reason}</p>
+                                  ))}
+                                  {item.basicScore.gates.reasons.length > 3 && (
+                                    <p className="text-xs text-gray-400">...e mais {item.basicScore.gates.reasons.length - 3}</p>
+                                  )}
+                                </div>
+                              </TooltipContent>
+                            </Tooltip>
+                          )}
+                        </div>
+                      </td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
+          </div>
+          
+          {/* Resumo comparativo */}
+          <div className="mt-4 p-3 bg-gray-50 rounded-lg">
+            <p className="text-sm text-gray-700">
+              {(() => {
+                const mainSite = ranking.find(s => s.type === 'main');
+                if (!mainSite) return 'Dados do site principal não disponíveis.';
+                
+                const competitors = ranking.filter(s => s.type === 'competitor');
+                const betterThanCount = competitors.filter(c => c.score < mainSite.score).length;
+                const worseThanCount = competitors.filter(c => c.score > mainSite.score).length;
+                
+                const status = betterThanCount > worseThanCount ? 'à frente' : 'atrás';
+                const count = Math.max(betterThanCount, worseThanCount);
+                
+                // Calcular principais diferenças
+                const differences = [];
+                const avgCompetitorLcp = competitors.reduce((sum, c) => sum + (c.basicInputs?.lcp || 0), 0) / competitors.length;
+                const avgCompetitorWeight = competitors.reduce((sum, c) => sum + (c.basicInputs?.pageWeight || 0), 0) / competitors.length;
+                
+                if (mainSite.basicInputs?.lcp && avgCompetitorLcp) {
+                  const lcpDiff = mainSite.basicInputs.lcp - avgCompetitorLcp;
+                  if (Math.abs(lcpDiff) > 0.5) {
+                    differences.push(`LCP ${lcpDiff > 0 ? '+' : ''}${lcpDiff.toFixed(1)}s`);
+                  }
+                }
+                
+                if (mainSite.basicInputs?.pageWeight && avgCompetitorWeight) {
+                  const weightDiff = (mainSite.basicInputs.pageWeight - avgCompetitorWeight) / 1024 / 1024;
+                  if (Math.abs(weightDiff) > 0.5) {
+                    differences.push(`página ${weightDiff > 0 ? '+' : ''}${weightDiff.toFixed(1)}MB`);
+                  }
+                }
+                
+                // Verificar gates específicos dos concorrentes
+                const competitorsWithoutHttps = competitors.filter(c => 
+                  c.basicScore?.gates?.reasons?.some(r => r.includes('HTTPS'))
+                );
+                if (competitorsWithoutHttps.length > 0) {
+                  differences.push(`sem HTTPS (${competitorsWithoutHttps.map(c => new URL(c.url).hostname).join(', ')})`);
+                }
+                
+                const diffText = differences.length > 0 ? ` Principais diferenças: ${differences.slice(0, 3).join(', ')}.` : '';
+                
+                return `Seu site está ${status} de ${count} concorrente${count !== 1 ? 's' : ''}.${diffText}`;
+              })()
+            }
+            </p>
+          </div>
+          
+          <div className="mt-2 text-xs text-gray-500">
+            A comparação privilegia mobile e usa os mesmos critérios da sua nota básica.
           </div>
         </CardContent>
       </Card>
@@ -285,6 +483,7 @@ export function CompetitorComparison({ reportId }: CompetitorComparisonProps) {
           </div>
         </CardContent>
       </Card>
-    </div>
+      </div>
+    </TooltipProvider>
   );
 }

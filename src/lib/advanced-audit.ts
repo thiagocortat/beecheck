@@ -1,42 +1,69 @@
-import chromium from '@sparticuz/chromium-min'
-import puppeteer from 'puppeteer-core'
-import type { Browser, Page } from 'puppeteer-core'
 import { AdvancedSample, AdvancedScores, AdvancedAuditResult } from '@/types/advanced'
 import * as axe from 'axe-core'
 
+// Type for browser that works with both puppeteer and puppeteer-core
+type AnyBrowser = any
+
+// Dynamic imports for different environments
+const getPuppeteer = async () => {
+  const isProduction = process.env.NODE_ENV === 'production';
+  
+  if (isProduction) {
+    // Production: Use puppeteer-core with chromium-min for Vercel
+    const puppeteer = await import('puppeteer-core');
+    const chromium = await import('@sparticuz/chromium-min');
+    return { puppeteer: puppeteer.default, chromium: chromium.default };
+  } else {
+    // Development: Use regular puppeteer with bundled Chrome
+    const puppeteer = await import('puppeteer');
+    return { puppeteer: puppeteer.default, chromium: null };
+  }
+};
+
 export class AdvancedAuditor {
-  private browser: Browser | null = null
+  private browser: AnyBrowser | null = null
 
   async initialize() {
-    // Configure for serverless environments like Vercel
-    const isProduction = process.env.NODE_ENV === 'production'
+    const isProduction = process.env.NODE_ENV === 'production';
+    const { puppeteer, chromium } = await getPuppeteer();
     
-    // For chromium-min, we need to provide the brotli files location
-    // In Vercel, we'll use a CDN-hosted version of the brotli files
-    const brotliPath = isProduction 
-      ? 'https://github.com/Sparticuz/chromium/releases/download/v131.0.0/chromium-v131.0.0-pack.tar'
-      : undefined
-    
-    this.browser = await puppeteer.launch({
-      args: [
-        ...chromium.args,
-        '--no-sandbox',
-        '--disable-setuid-sandbox',
-        '--disable-dev-shm-usage',
-        '--disable-accelerated-2d-canvas',
-        '--no-first-run',
-        '--no-zygote',
-        '--disable-gpu',
-        '--disable-background-timer-throttling',
-        '--disable-backgrounding-occluded-windows',
-        '--disable-renderer-backgrounding',
-        '--disable-features=TranslateUI',
-        '--disable-ipc-flooding-protection',
-        ...(isProduction ? ['--single-process'] : [])
-      ],
-      executablePath: await chromium.executablePath(brotliPath),
-      headless: true
-    })
+    if (isProduction && chromium) {
+      // Production: Use puppeteer-core with chromium-min for Vercel
+      const brotliPath = 'https://github.com/Sparticuz/chromium/releases/download/v131.0.0/chromium-v131.0.0-pack.tar';
+      
+      this.browser = await puppeteer.launch({
+        args: [
+          ...chromium.args,
+          '--no-sandbox',
+          '--disable-setuid-sandbox',
+          '--disable-dev-shm-usage',
+          '--disable-accelerated-2d-canvas',
+          '--no-first-run',
+          '--no-zygote',
+          '--disable-gpu',
+          '--disable-background-timer-throttling',
+          '--disable-backgrounding-occluded-windows',
+          '--disable-renderer-backgrounding',
+          '--disable-features=TranslateUI',
+          '--disable-ipc-flooding-protection',
+          '--single-process'
+        ],
+        executablePath: await chromium.executablePath(brotliPath),
+        headless: true
+      });
+    } else {
+      // Development: Use regular puppeteer with bundled Chrome
+      this.browser = await puppeteer.launch({
+        args: [
+          '--no-sandbox',
+          '--disable-setuid-sandbox',
+          '--disable-dev-shm-usage',
+          '--disable-web-security',
+          '--disable-features=VizDisplayCompositor'
+        ],
+        headless: true
+      });
+    }
   }
 
   async close() {

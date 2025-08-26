@@ -2,6 +2,70 @@ import { NextRequest, NextResponse } from 'next/server';
 import { z } from 'zod';
 import { prisma } from '@/lib/prisma';
 import { analyzeWebsite } from '@/lib/analysis-worker';
+import { PageSpeedClient } from '@/lib/pagespeed';
+import { toBasicInputs } from '@/lib/normalize-basic';
+import { computeBasicScore } from '@/lib/basic-score';
+
+// SEO check function (extracted from analysis-worker)
+async function performSEOChecks(url: string) {
+  try {
+    const response = await fetch(url, {
+      headers: {
+        'User-Agent': 'BeeCheck-Bot/1.0'
+      }
+    })
+    
+    if (!response.ok) {
+      throw new Error(`HTTP ${response.status}`)
+    }
+    
+    const html = await response.text()
+    const urlObj = new URL(url)
+    
+    return {
+      hasTitle: /<title[^>]*>([^<]+)<\/title>/i.test(html),
+      hasDescription: /<meta[^>]*name=["']description["'][^>]*content=["']([^"']+)["']/i.test(html),
+      hasH1: /<h1[^>]*>([^<]+)<\/h1>/i.test(html),
+      hasHttps: urlObj.protocol === 'https:',
+      hasSitemap: await checkSitemap(urlObj.origin),
+      hasRobots: await checkRobots(urlObj.origin),
+      hasCanonical: /<link[^>]*rel=["']canonical["']/i.test(html),
+      hasSchema: /application\/ld\+json|schema\.org/i.test(html),
+      hasBookingCta: /reserv|book|disponibilidade/i.test(html),
+    }
+  } catch (error) {
+    console.error('SEO check failed:', error)
+    return {
+      hasTitle: false,
+      hasDescription: false,
+      hasH1: false,
+      hasHttps: false,
+      hasSitemap: false,
+      hasRobots: false,
+      hasCanonical: false,
+      hasSchema: false,
+      hasBookingCta: false,
+    }
+  }
+}
+
+async function checkSitemap(origin: string): Promise<boolean> {
+  try {
+    const response = await fetch(`${origin}/sitemap.xml`)
+    return response.ok
+  } catch {
+    return false
+  }
+}
+
+async function checkRobots(origin: string): Promise<boolean> {
+  try {
+    const response = await fetch(`${origin}/robots.txt`)
+    return response.ok
+  } catch {
+    return false
+  }
+}
 
 const compareSchema = z.object({
   mainUrl: z.string().url('URL principal deve ser válida'),
@@ -126,33 +190,54 @@ export async function GET(request: NextRequest) {
       );
     }
 
-    // Calcular ranking
-    const allSites = [
-      {
-        id: report.id,
-        url: report.url,
-        score: report.score,
-        type: 'main' as const,
-        status: report.status,
-      },
-      ...report.competitors.map(comp => ({
+    // Get detailed data for all sites using Basic Analysis 2.0
+    const pageSpeedClient = new PageSpeedClient(process.env.PAGESPEED_API_KEY!);
+    
+    // Use existing scores from database (already calculated with Basic Analysis 2.0)
+    const validCompetitors = report.competitors
+      .filter(comp => comp.score && comp.score > 0)
+      .map(comp => ({
         id: comp.id,
         url: comp.url,
-        score: comp.score,
+        score: comp.score!,
+        basicInputs: null, // Will be populated from existing analysis if needed
+        basicScore: null,   // Will be populated from existing analysis if needed
         type: 'competitor' as const,
         status: 'completed' as const,
-      })),
-    ];
+      }));
+    
+    console.log(`[BeeCheck][Concorrentes] usando dados já calculados (${validCompetitors.length} concorrentes)`);
+    
+    const allSites = [
+       {
+         id: report.id,
+         url: report.url,
+         score: report.score || 0,
+         basicInputs: null,
+         basicScore: null,
+         type: 'main' as const,
+         status: report.status,
+       },
+       ...validCompetitors,
+     ];
 
-    // Ordenar por score (maior para menor)
-    const ranking = allSites
-      .filter(site => site.status === 'completed')
-      .sort((a, b) => (b.score || 0) - (a.score || 0))
+    // Ranking simplificado por score (dados detalhados já calculados no analysis-worker)
+      const ranking = allSites
+        .filter(site => site.status === 'completed')
+        .sort((a, b) => {
+          // 1. Nota final (desc)
+          if ((b.score || 0) !== (a.score || 0)) return (b.score || 0) - (a.score || 0);
+          
+          // 2. Alfabética do domínio como desempate
+          return a.url.localeCompare(b.url);
+        })
       .map((site, index) => ({
         ...site,
         position: index + 1,
         medal: index === 0 ? '🥇' : index === 1 ? '🥈' : index === 2 ? '🥉' : '📊',
       }));
+    
+    console.log(`[BeeCheck][Concorrentes] ranking pronto (${validCompetitors.length} concorrentes)`);
 
     // Calcular insights
     const mainSite = ranking.find(site => site.type === 'main');

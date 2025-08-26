@@ -1,7 +1,9 @@
 import { PageSpeedClient } from './pagespeed'
 import { prisma } from './prisma'
-import { generateExecutiveReport, generateTechnicalReport } from './report-generator'
+
 import { calculateOverallScore } from './scoring'
+import { toBasicInputs } from './normalize-basic'
+import { computeBasicScore } from './basic-score'
 
 interface AnalysisJobData {
   reportId: string
@@ -35,17 +37,17 @@ export async function analyzeWebsite(data: AnalysisJobData) {
       seo: seoMetrics
     }
     
-    // Calculate score
-    const score = calculateOverallScore(metricsData)
+    // Calculate score using Basic Analysis 2.0
+    const basicInputs = toBasicInputs(metricsData)
+    const basicScore = computeBasicScore(basicInputs)
+    const score = basicScore.final
     
     // Generate reports
-    const executiveReport = generateExecutiveReport(metricsData)
-    const technicalReport = generateTechnicalReport(metricsData)
+    const technicalReport = 'Technical report generation removed'
     
-    // Generate recommendations
-    const recommendations = executiveReport.quickWins
-      .map(win => `**${win.title}**: ${win.description} - ${win.impact}`)
-      .join('\n\n')
+    console.log(`[BeeCheck][Basica] site principal → nota ${score}, gates=${basicScore.gates.reasons.length}`)
+    
+    const recommendations = 'Recommendations generation removed'
     
     // Update report with results
     await prisma.report.update({
@@ -81,7 +83,6 @@ export async function analyzeWebsite(data: AnalysisJobData) {
         hasBookingCta: seoMetrics.hasBookingCta,
         
         // Generated content
-        executiveSummary: JSON.stringify(executiveReport),
         technicalReport,
         recommendations,
       }
@@ -176,17 +177,22 @@ async function processCompetitors(reportId: string, competitors: string[]) {
         const metrics = await pageSpeedClient.analyzeBoth(url)
         const seoMetrics = await performSEOChecks(url)
         
-        const metricsData = {
+        // Use Basic Analysis 2.0 scoring logic
+        const basicInputs = toBasicInputs({
           mobile: metrics.mobile,
           desktop: metrics.desktop,
           seo: seoMetrics
-        }
+        })
         
-        const score = calculateOverallScore(metricsData)
+        const basicScore = computeBasicScore(basicInputs)
+         const score = Math.round(basicScore.final)
+         
+         console.log(`[BeeCheck][Concorrentes] ${url} → nota ${score}, gates=${basicScore.gates.reasons.length}, deltaVsSeuSite=TBD`)
         
         return {
           url,
           score,
+          basicScore,
           rank: index + 2 // Main site is rank 1
         }
       } catch (error) {
@@ -194,6 +200,7 @@ async function processCompetitors(reportId: string, competitors: string[]) {
         return {
           url,
           score: 0,
+          basicScore: null,
           rank: index + 2
         }
       }
@@ -202,7 +209,7 @@ async function processCompetitors(reportId: string, competitors: string[]) {
   
   // Save competitor results
   const validResults = competitorResults
-    .filter((result): result is PromiseFulfilledResult<{ url: string; score: number; rank: number }> => result.status === 'fulfilled')
+    .filter((result): result is PromiseFulfilledResult<{ url: string; score: number; basicScore: any; rank: number }> => result.status === 'fulfilled')
     .map(result => result.value)
   
   if (validResults.length > 0) {

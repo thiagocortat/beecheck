@@ -315,27 +315,7 @@ export function AdvancedAnalysis({ reportId }: AdvancedAnalysisProps) {
             <HumanizedCards reportData={{ pages: [result.sample] }} />
           </div>
 
-          {/* Executive Summary */}
-          {result.executiveBullets && result.executiveBullets.length > 0 && (
-            <Card>
-              <CardHeader>
-                <CardTitle>Resumo Executivo</CardTitle>
-                <CardDescription>
-                  Principais insights e recomendações baseados na análise avançada
-                </CardDescription>
-              </CardHeader>
-              <CardContent>
-                <ul className="space-y-2">
-                  {result.executiveBullets.map((bullet, index) => (
-                    <li key={index} className="flex items-start gap-2">
-                      <div className="w-2 h-2 bg-blue-500 rounded-full mt-2 flex-shrink-0" />
-                      <span className="text-sm">{bullet}</span>
-                    </li>
-                  ))}
-                </ul>
-              </CardContent>
-            </Card>
-          )}
+
 
           {/* Technical Details */}
           <Card>

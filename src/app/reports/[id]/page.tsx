@@ -7,6 +7,8 @@ import { Progress } from '@/components/ui/progress';
 import { getScoreColor, getScoreEmoji } from '@/lib/scoring';
 import { Download, ExternalLink, Smartphone, Monitor } from 'lucide-react';
 import Link from 'next/link';
+import { toBasicInputs } from '@/lib/normalize-basic';
+import { computeBasicScore } from '@/lib/basic-score';
 
 interface ReportPageProps {
   params: { id: string };
@@ -22,10 +24,43 @@ export default async function ReportPage({ params }: ReportPageProps) {
     notFound();
   }
 
-  const executiveSummary = report.executiveSummary ? JSON.parse(report.executiveSummary) : null;
+
   const technicalDetails = report.technicalReport ? JSON.parse(report.technicalReport) : null;
-  const scoreColor = getScoreColor(report.score || 0);
-  const scoreEmoji = getScoreEmoji(report.score || 0);
+  // Calculate score using Basic Score 2.0 for consistency
+  const basicInputs = toBasicInputs({
+    mobile: {
+      lcp: report.lcpMobile,
+      cls: report.clsMobile,
+      inp: report.inpMobile,
+      ttfb: report.ttfbMobile,
+      pageSize: report.pageSizeMobile
+    },
+    desktop: {
+      lcp: report.lcpDesktop,
+      cls: report.clsDesktop,
+      inp: report.inpDesktop,
+      ttfb: report.ttfbDesktop,
+      pageSize: report.pageSizeDesktop
+    },
+    seo: {
+      hasTitle: report.hasTitle,
+      hasDescription: report.hasDescription,
+      hasH1: report.hasH1,
+      hasHttps: report.hasHttps,
+      hasSitemap: report.hasSitemap,
+      hasRobots: report.hasRobots,
+      hasCanonical: report.hasCanonical,
+      hasSchema: report.hasSchema,
+      hasBookingCta: report.hasBookingCta
+    },
+    url: report.url
+  });
+  
+  const basicScore = computeBasicScore(basicInputs);
+  const currentScore = basicScore.final;
+  
+  const scoreColor = getScoreColor(currentScore);
+  const scoreEmoji = getScoreEmoji(currentScore);
 
   const getScoreBadgeVariant = (color: string) => {
     switch (color) {
@@ -55,7 +90,7 @@ export default async function ReportPage({ params }: ReportPageProps) {
             <div className="text-center">
               <div className="text-6xl mb-4">{scoreEmoji}</div>
               <div className="text-4xl font-bold mb-2" style={{ color: scoreColor === 'green' ? '#10b981' : scoreColor === 'yellow' ? '#f59e0b' : '#ef4444' }}>
-                {report.score || 0}/100
+                {currentScore}/100
               </div>
               <Badge variant={getScoreBadgeVariant(scoreColor)} className="text-lg px-4 py-1">
                 {scoreColor === 'green' ? 'Excelente' : scoreColor === 'yellow' ? 'Pode Melhorar' : 'Precisa de Atenção'}
@@ -89,9 +124,9 @@ export default async function ReportPage({ params }: ReportPageProps) {
             </CardHeader>
             <CardContent>
               <div className="text-3xl font-bold text-blue-600 mb-2">
-                {report.score || 'N/A'}/100
+                {currentScore}/100
               </div>
-              <Progress value={report.score || 0} className="mb-2" />
+              <Progress value={currentScore} className="mb-2" />
               <p className="text-sm text-gray-600">
                 A maioria dos hóspedes acessa pelo celular
               </p>
@@ -107,9 +142,9 @@ export default async function ReportPage({ params }: ReportPageProps) {
             </CardHeader>
             <CardContent>
               <div className="text-3xl font-bold text-purple-600 mb-2">
-                {report.score || 'N/A'}/100
+                {currentScore}/100
               </div>
-              <Progress value={report.score || 0} className="mb-2" />
+              <Progress value={currentScore} className="mb-2" />
               <p className="text-sm text-gray-600">
                 Importante para pesquisa e comparação
               </p>
@@ -117,36 +152,7 @@ export default async function ReportPage({ params }: ReportPageProps) {
           </Card>
         </div>
 
-        {/* Quick Wins */}
-        {executiveSummary?.quickWins && (
-          <Card className="mb-8 bg-green-50 border-green-200">
-            <CardHeader>
-              <CardTitle className="text-green-800">🚀 Ganhos Rápidos</CardTitle>
-            </CardHeader>
-            <CardContent>
-              <div className="space-y-4">
-                {executiveSummary.quickWins.map((win: any, index: number) => (
-                  <div key={index} className="bg-white p-4 rounded-lg border border-green-200">
-                    <h4 className="font-semibold text-green-800 mb-2">{win.title}</h4>
-                    <p className="text-gray-700">{win.description}</p>
-                  </div>
-                ))}
-              </div>
-            </CardContent>
-          </Card>
-        )}
 
-        {/* Business Impact */}
-        {executiveSummary?.businessImpact && (
-          <Card className="mb-8 bg-amber-50 border-amber-200">
-            <CardHeader>
-              <CardTitle className="text-amber-800">💰 Impacto para Vendas</CardTitle>
-            </CardHeader>
-            <CardContent>
-              <p className="text-gray-700">{executiveSummary.businessImpact}</p>
-            </CardContent>
-          </Card>
-        )}
 
         {/* Technical Details */}
         {technicalDetails && (

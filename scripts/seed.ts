@@ -1,7 +1,7 @@
 import { PrismaClient } from '@prisma/client';
 import { PageSpeedClient } from '../src/lib/pagespeed';
 import { calculateOverallScore } from '../src/lib/scoring';
-import { generateExecutiveReport, generateTechnicalReport } from '../src/lib/report-generator';
+
 
 const prisma = new PrismaClient();
 const pageSpeedClient = new PageSpeedClient(process.env.GOOGLE_PAGESPEED_API_KEY!);
@@ -71,8 +71,7 @@ async function seedDatabase() {
           });
 
           // Gerar relatórios
-          const executiveSummary = generateExecutiveReport(consolidatedData);
-          const technicalDetails = generateTechnicalReport(consolidatedData);
+          const technicalDetails = 'Technical report generation removed';
 
           // Atualizar relatório
           await prisma.report.update({
@@ -80,7 +79,7 @@ async function seedDatabase() {
             data: {
               status: 'completed',
               score: mobileScore,
-              executiveSummary: JSON.stringify(executiveSummary),
+
               technicalReport: JSON.stringify(technicalDetails),
               completedAt: new Date(),
               // Core Web Vitals

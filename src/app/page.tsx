@@ -11,25 +11,14 @@ import { Loader2, Search, TrendingUp, Smartphone, Monitor } from 'lucide-react'
 import { toast } from 'sonner'
 import { CompetitorComparison } from '@/components/competitor-comparison'
 import { AdvancedAnalysis } from '@/components/advanced-analysis'
+import { BasicScoreCard } from '@/components/basic/BasicScoreCard'
 
 interface Report {
   id: string
   url: string
   status: string
   score?: number
-  executiveSummary?: {
-    score: number
-    color: 'green' | 'yellow' | 'red'
-    emoji: string
-    quickWins: Array<{
-      title: string
-      description: string
-      impact: string
-      priority: 'high' | 'medium' | 'low'
-    }>
-    businessImpact: string
-    mobileVsDesktop: string
-  }
+
   competitors?: Array<{
     url: string
     score: number
@@ -290,74 +279,22 @@ export default function Home() {
         )}
 
         {/* Results */}
-        {report && report.executiveSummary && (
+        {report && (
           <div className="space-y-6">
-            {/* Score Overview */}
+            {/* Basic Score 2.0 */}
             <Card>
               <CardHeader>
-                <CardTitle className="flex items-center justify-between">
-                  <span>Resumo Executivo</span>
-                  <div className="flex items-center gap-2">
-                    <span className="text-2xl">{report.executiveSummary.emoji}</span>
-                    <Badge 
-                      variant="outline" 
-                      className={`text-white ${getScoreColor(report.executiveSummary.score)}`}
-                    >
-                      {report.executiveSummary.score}/100
-                    </Badge>
-                  </div>
-                </CardTitle>
-              </CardHeader>
-              <CardContent>
-                <div className="mb-4">
-                  <Progress 
-                    value={report.executiveSummary.score} 
-                    className="h-3"
-                  />
-                </div>
-                <p className="text-gray-700 mb-4">
-                  {report.executiveSummary.businessImpact}
-                </p>
-                <div className="bg-blue-50 p-4 rounded-lg">
-                  <div className="flex items-center gap-2 mb-2">
-                    <Smartphone className="h-4 w-4" />
-                    <Monitor className="h-4 w-4" />
-                    <span className="font-medium">Mobile vs Desktop</span>
-                  </div>
-                  <p className="text-sm text-gray-700">
-                    {report.executiveSummary.mobileVsDesktop}
-                  </p>
-                </div>
-              </CardContent>
-            </Card>
-
-            {/* Quick Wins */}
-            <Card>
-              <CardHeader>
-                <CardTitle>Ganhos Rápidos</CardTitle>
+                <CardTitle>Análise Básica</CardTitle>
                 <CardDescription>
-                  Melhorias que você pode fazer hoje para aumentar suas reservas
+                  Score 2.0 com foco mobile e critérios rigorosos
                 </CardDescription>
               </CardHeader>
               <CardContent>
-                <div className="space-y-4">
-                  {report.executiveSummary.quickWins.map((win, index) => (
-                    <div key={index} className="border rounded-lg p-4">
-                      <div className="flex items-start justify-between mb-2">
-                        <h4 className="font-semibold">{win.title}</h4>
-                        <Badge variant={getPriorityColor(win.priority)}>
-                          {win.priority === 'high' ? 'Alta' : win.priority === 'medium' ? 'Média' : 'Baixa'}
-                        </Badge>
-                      </div>
-                      <p className="text-gray-600 text-sm mb-2">{win.description}</p>
-                      <div className="bg-green-50 p-2 rounded text-sm">
-                        <strong>Impacto:</strong> {win.impact}
-                      </div>
-                    </div>
-                  ))}
-                </div>
+                <BasicScoreCard report={report} />
               </CardContent>
             </Card>
+
+
 
             {/* Competitor Comparison */}
             {showComparison && reportId && (

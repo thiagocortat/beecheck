@@ -80,7 +80,7 @@ export async function POST(request: NextRequest) {
         hasSchema: auditResult.sample.seo.schema.length > 0,
         hasBookingCta: false, // Would need content analysis
         
-        executiveSummary: auditResult.executiveBullets.join('\n\n'),
+  
         technicalReport: generateTechnicalReport(auditResult),
         recommendations: generateRecommendations(auditResult),
         
