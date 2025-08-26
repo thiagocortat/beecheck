@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
-import puppeteer from 'puppeteer';
+import puppeteer from 'puppeteer-core';
+import chromium from '@sparticuz/chromium-min';
 import { prisma } from '@/lib/prisma';
 
 export async function GET(
@@ -25,15 +26,34 @@ export async function GET(
 
     let browser;
     try {
+      // Configure for serverless environments like Vercel
+      const isProduction = process.env.NODE_ENV === 'production'
+      
+      // For chromium-min, we need to provide the brotli files location
+      // In Vercel, we'll use a CDN-hosted version of the brotli files
+      const brotliPath = isProduction 
+        ? 'https://github.com/Sparticuz/chromium/releases/download/v131.0.0/chromium-v131.0.0-pack.tar'
+        : undefined
+      
       browser = await puppeteer.launch({
-        headless: true,
         args: [
+          ...chromium.args,
           '--no-sandbox',
           '--disable-setuid-sandbox',
           '--disable-dev-shm-usage',
+          '--disable-accelerated-2d-canvas',
+          '--no-first-run',
+          '--no-zygote',
           '--disable-gpu',
+          '--disable-background-timer-throttling',
+          '--disable-backgrounding-occluded-windows',
+          '--disable-renderer-backgrounding',
+          '--disable-features=TranslateUI',
+          '--disable-ipc-flooding-protection',
+          ...(isProduction ? ['--single-process'] : [])
         ],
-        executablePath: process.env.PUPPETEER_EXECUTABLE_PATH,
+        executablePath: await chromium.executablePath(brotliPath),
+        headless: true
       });
 
       const page = await browser.newPage();
