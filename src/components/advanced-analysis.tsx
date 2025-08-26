@@ -8,6 +8,7 @@ import { Badge } from '@/components/ui/badge'
 import { Progress } from '@/components/ui/progress'
 import { Loader2, Zap, Globe, Shield, Image, Cpu, Palette, Search, Smartphone } from 'lucide-react'
 import { AdvancedAuditResult } from '@/types/advanced'
+import { HumanizedCards } from '@/components/advanced/HumanizedCards'
 
 interface AdvancedAnalysisProps {
   reportId?: string
@@ -307,6 +308,11 @@ export function AdvancedAnalysis({ reportId }: AdvancedAnalysisProps) {
                 </div>
               </CardContent>
             </Card>
+          </div>
+
+          {/* Humanized Analysis Cards */}
+          <div className="space-y-4">
+            <HumanizedCards reportData={{ pages: [result.sample] }} />
           </div>
 
           {/* Executive Summary */}
