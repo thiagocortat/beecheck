@@ -1,5 +1,6 @@
-import * as playwright from 'playwright-aws-lambda'
-import { Browser, Page } from 'playwright'
+import chromium from '@sparticuz/chromium'
+import puppeteer from 'puppeteer-core'
+import type { Browser, Page } from 'puppeteer-core'
 import { AdvancedSample, AdvancedScores, AdvancedAuditResult } from '@/types/advanced'
 import * as axe from 'axe-core'
 
@@ -10,9 +11,9 @@ export class AdvancedAuditor {
     // Configure for serverless environments like Vercel
     const isProduction = process.env.NODE_ENV === 'production'
     
-    this.browser = await playwright.launchChromium({
-      headless: true,
+    this.browser = await puppeteer.launch({
       args: [
+        ...chromium.args,
         '--no-sandbox',
         '--disable-setuid-sandbox',
         '--disable-dev-shm-usage',
@@ -26,7 +27,9 @@ export class AdvancedAuditor {
         '--disable-features=TranslateUI',
         '--disable-ipc-flooding-protection',
         ...(isProduction ? ['--single-process'] : [])
-      ]
+      ],
+      executablePath: await chromium.executablePath(),
+      headless: true
     })
   }
 
@@ -73,25 +76,24 @@ export class AdvancedAuditor {
   }
 
   private async auditViewport(url: string, viewport: 'mobile' | 'desktop'): Promise<AdvancedSample> {
-    const context = await this.browser!.newContext({
-      viewport: viewport === 'mobile' 
-        ? { width: 360, height: 780 }
-        : { width: 1366, height: 768 },
-      userAgent: viewport === 'mobile'
-        ? 'Mozilla/5.0 (iPhone; CPU iPhone OS 14_0 like Mac OS X) AppleWebKit/605.1.15'
-        : 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36'
-    })
-
-    const page = await context.newPage()
+    const page = await this.browser!.newPage()
     
-    // Enable HAR recording
-    await context.tracing.start({ screenshots: true, snapshots: true })
+    await page.setViewport(viewport === 'mobile' 
+      ? { width: 360, height: 780 }
+      : { width: 1366, height: 768 })
+    
+    await page.setUserAgent(viewport === 'mobile'
+      ? 'Mozilla/5.0 (iPhone; CPU iPhone OS 14_0 like Mac OS X) AppleWebKit/605.1.15'
+      : 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36')
+    
+    // Enable request interception for monitoring
+    await page.setRequestInterception(false)
     
     const responses: any[] = []
     const serverTimings: any[] = []
     
     // Collect responses and headers
-    page.on('response', (response) => {
+    page.on('response', (response: any) => {
       responses.push({
         url: response.url(),
         status: response.status(),
@@ -107,7 +109,7 @@ export class AdvancedAuditor {
 
     // Navigate and collect performance data
     const startTime = Date.now()
-    await page.goto(url, { waitUntil: 'networkidle' })
+    await page.goto(url, { waitUntil: 'networkidle0', timeout: 20000 })
     const endTime = Date.now()
 
     // Inject performance observer script
@@ -178,8 +180,7 @@ export class AdvancedAuditor {
       return (window as any).axe.run()
     })
 
-    await context.tracing.stop()
-    await context.close()
+    await page.close()
 
     return this.buildAdvancedSample(url, viewport, {
       performanceData,
