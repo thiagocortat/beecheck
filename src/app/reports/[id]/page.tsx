@@ -23,9 +23,9 @@ export default async function ReportPage({ params }: ReportPageProps) {
   }
 
   const executiveSummary = report.executiveSummary ? JSON.parse(report.executiveSummary) : null;
-  const technicalDetails = report.technicalDetails ? JSON.parse(report.technicalDetails) : null;
-  const scoreColor = getScoreColor(report.overallScore);
-  const scoreEmoji = getScoreEmoji(report.overallScore);
+  const technicalDetails = report.technicalReport ? JSON.parse(report.technicalReport) : null;
+  const scoreColor = getScoreColor(report.score || 0);
+  const scoreEmoji = getScoreEmoji(report.score || 0);
 
   const getScoreBadgeVariant = (color: string) => {
     switch (color) {
@@ -55,7 +55,7 @@ export default async function ReportPage({ params }: ReportPageProps) {
             <div className="text-center">
               <div className="text-6xl mb-4">{scoreEmoji}</div>
               <div className="text-4xl font-bold mb-2" style={{ color: scoreColor === 'green' ? '#10b981' : scoreColor === 'yellow' ? '#f59e0b' : '#ef4444' }}>
-                {report.overallScore}/100
+                {report.score || 0}/100
               </div>
               <Badge variant={getScoreBadgeVariant(scoreColor)} className="text-lg px-4 py-1">
                 {scoreColor === 'green' ? 'Excelente' : scoreColor === 'yellow' ? 'Pode Melhorar' : 'Precisa de Atenção'}
@@ -89,9 +89,9 @@ export default async function ReportPage({ params }: ReportPageProps) {
             </CardHeader>
             <CardContent>
               <div className="text-3xl font-bold text-blue-600 mb-2">
-                {report.mobileScore || 'N/A'}/100
+                {report.score || 'N/A'}/100
               </div>
-              <Progress value={report.mobileScore || 0} className="mb-2" />
+              <Progress value={report.score || 0} className="mb-2" />
               <p className="text-sm text-gray-600">
                 A maioria dos hóspedes acessa pelo celular
               </p>
@@ -107,9 +107,9 @@ export default async function ReportPage({ params }: ReportPageProps) {
             </CardHeader>
             <CardContent>
               <div className="text-3xl font-bold text-purple-600 mb-2">
-                {report.desktopScore || 'N/A'}/100
+                {report.score || 'N/A'}/100
               </div>
-              <Progress value={report.desktopScore || 0} className="mb-2" />
+              <Progress value={report.score || 0} className="mb-2" />
               <p className="text-sm text-gray-600">
                 Importante para pesquisa e comparação
               </p>

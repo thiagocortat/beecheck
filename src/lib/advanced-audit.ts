@@ -32,10 +32,25 @@ export class AdvancedAuditor {
     const scores = this.scoreAdvanced(sample)
     const executiveBullets = this.generateExecutiveBullets(sample, scores)
 
+    // Calculate overall score as weighted average
+    const overallScore = Math.round(
+      (scores.perfNet * 0.25) +
+      (scores.resources * 0.15) +
+      (scores.cacheCdn * 0.1) +
+      (scores.images * 0.15) +
+      (scores.thirdParties * 0.1) +
+      (scores.fonts * 0.05) +
+      (scores.pwa * 0.05) +
+      (scores.a11y * 0.1) +
+      (scores.seo * 0.05)
+    )
+
     return {
       sample,
       scores,
-      executiveBullets
+      executiveBullets,
+      overallScore,
+      reportId: '' // Will be set by the caller
     }
   }
 

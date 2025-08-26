@@ -71,7 +71,7 @@ async function seedDatabase() {
           });
 
           // Gerar relatórios
-          const executiveSummary = generateExecutiveReport(consolidatedData, url);
+          const executiveSummary = generateExecutiveReport(consolidatedData);
           const technicalDetails = generateTechnicalReport(consolidatedData);
 
           // Atualizar relatório

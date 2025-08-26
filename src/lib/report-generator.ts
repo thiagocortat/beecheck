@@ -16,7 +16,7 @@ export interface ExecutiveReport {
   mobileVsDesktop: string
 }
 
-export function generateExecutiveReport(data: MetricsData, url: string): ExecutiveReport {
+export function generateExecutiveReport(data: MetricsData): ExecutiveReport {
   const score = calculateOverallScore(data)
   const color = getScoreColor(score)
   const emoji = getScoreEmoji(score)
@@ -151,11 +151,11 @@ function generateMobileVsDesktopComparison(data: MetricsData): string {
   return '📱 Seu site tem performance similar no celular e computador. Foque em melhorar ambos, priorizando mobile (70% das reservas).'
 }
 
-function calculateCoreWebVitalsScore(metrics: any): number {
+function calculateCoreWebVitalsScore(metrics: { lcp?: number; cls?: number; inp?: number }): number {
   // Simplified calculation for comparison
-  const lcpScore = metrics.lcp <= 2500 ? 100 : Math.max(0, 100 - ((metrics.lcp - 2500) / 1500) * 50)
-  const clsScore = metrics.cls <= 0.1 ? 100 : Math.max(0, 100 - ((metrics.cls - 0.1) / 0.15) * 50)
-  const inpScore = metrics.inp <= 200 ? 100 : Math.max(0, 100 - ((metrics.inp - 200) / 300) * 50)
+  const lcpScore = metrics.lcp ? (metrics.lcp <= 2500 ? 100 : Math.max(0, 100 - ((metrics.lcp - 2500) / 1500) * 50)) : 0
+  const clsScore = metrics.cls !== undefined ? (metrics.cls <= 0.1 ? 100 : Math.max(0, 100 - ((metrics.cls - 0.1) / 0.15) * 50)) : 0
+  const inpScore = metrics.inp ? (metrics.inp <= 200 ? 100 : Math.max(0, 100 - ((metrics.inp - 200) / 300) * 50)) : 0
   
   return (lcpScore + clsScore + inpScore) / 3
 }

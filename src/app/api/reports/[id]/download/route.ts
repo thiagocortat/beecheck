@@ -59,7 +59,7 @@ export async function GET(
       const domain = new URL(report.url).hostname.replace('www.', '');
       const filename = `beecheck-${domain}-${new Date().toISOString().split('T')[0]}.pdf`;
 
-      return new NextResponse(pdf, {
+      return new NextResponse(Buffer.from(pdf), {
         headers: {
           'Content-Type': 'application/pdf',
           'Content-Disposition': `attachment; filename="${filename}"`,

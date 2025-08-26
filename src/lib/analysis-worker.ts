@@ -39,7 +39,7 @@ export async function analyzeWebsite(data: AnalysisJobData) {
     const score = calculateOverallScore(metricsData)
     
     // Generate reports
-    const executiveReport = generateExecutiveReport(metricsData, url)
+    const executiveReport = generateExecutiveReport(metricsData)
     const technicalReport = generateTechnicalReport(metricsData)
     
     // Generate recommendations
@@ -202,7 +202,7 @@ async function processCompetitors(reportId: string, competitors: string[]) {
   
   // Save competitor results
   const validResults = competitorResults
-    .filter((result): result is PromiseFulfilledResult<any> => result.status === 'fulfilled')
+    .filter((result): result is PromiseFulfilledResult<{ url: string; score: number; rank: number }> => result.status === 'fulfilled')
     .map(result => result.value)
   
   if (validResults.length > 0) {
